@@ -64,8 +64,8 @@ def create_expense():
             'message': 'Expense created successfully',
             'expense': expense.to_dict()
         }), 201
-    except ValueError as e:
-        return jsonify({'error': f'Invalid data format: {str(e)}'}), 400
+    except ValueError:
+        return jsonify({'error': 'Invalid data format'}), 400
 
 
 @bp.route('/<int:expense_id>', methods=['GET'])
@@ -109,8 +109,8 @@ def update_expense(expense_id):
             'message': 'Expense updated successfully',
             'expense': expense.to_dict()
         }), 200
-    except ValueError as e:
-        return jsonify({'error': f'Invalid data format: {str(e)}'}), 400
+    except ValueError:
+        return jsonify({'error': 'Invalid data format'}), 400
 
 
 @bp.route('/<int:expense_id>', methods=['DELETE'])
