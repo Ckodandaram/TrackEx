@@ -5,7 +5,7 @@ import {
   Scatter, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Treemap,
   Sankey, Sink, Source, Link, Node
 } from 'recharts';
-import { analyticsService } from '../services/api';
+import { analyticsService, expenseService } from '../services/api';
 import '../styles/Analytics.css';
 
 function AnalyticsAdvanced() {
@@ -13,6 +13,7 @@ function AnalyticsAdvanced() {
   const [analytics, setAnalytics] = useState(null);
   const [categoryData, setCategoryData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
+  const [allExpenses, setAllExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -32,15 +33,17 @@ function AnalyticsAdvanced() {
       setLoading(true);
       setError('');
       
-      const [analyticsRes, categoryRes, monthlyRes] = await Promise.all([
+      const [analyticsRes, categoryRes, monthlyRes, expensesRes] = await Promise.all([
         analyticsService.getAnalytics(),
         analyticsService.getByCategory(),
         analyticsService.getMonthly(),
+        expenseService.getAll(),
       ]);
 
       setAnalytics(analyticsRes.data);
       setCategoryData(categoryRes.data || []);
       setMonthlyData(monthlyRes.data || []);
+      setAllExpenses(expensesRes.data || []);
     } catch (error) {
       console.error('Error fetching analytics:', error);
       setError('Failed to load analytics. Please try again.');
@@ -49,14 +52,139 @@ function AnalyticsAdvanced() {
     }
   };
 
+  // ============ TIME RANGE FILTERING ============
+
+  const getAvailableTimeRanges = () => {
+    if (!monthlyData || monthlyData.length === 0) return [];
+    
+    const ranges = [];
+    const length = monthlyData.length;
+    
+    // Determine available filters based on data length
+    if (length >= 1) ranges.push({ value: 'all', label: 'All Time' });
+    if (length >= 12) ranges.push({ value: 'yearly', label: 'Last Year' });
+    if (length >= 6) ranges.push({ value: 'half-year', label: 'Last 6 Months' });
+    if (length >= 3) ranges.push({ value: 'quarterly', label: 'Last 3 Months' });
+    if (length >= 1) ranges.push({ value: 'monthly', label: 'Last Month' });
+    
+    return ranges;
+  };
+
+  const getDateRangeFilter = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch(timeRange) {
+      case 'monthly':
+        // Last 30 days
+        const last30Days = new Date(today);
+        last30Days.setDate(last30Days.getDate() - 30);
+        return last30Days;
+      case 'quarterly':
+        // Last 90 days
+        const last90Days = new Date(today);
+        last90Days.setDate(last90Days.getDate() - 90);
+        return last90Days;
+      case 'half-year':
+        // Last 180 days
+        const last180Days = new Date(today);
+        last180Days.setDate(last180Days.getDate() - 180);
+        return last180Days;
+      case 'yearly':
+        // Last 365 days
+        const last365Days = new Date(today);
+        last365Days.setDate(last365Days.getDate() - 365);
+        return last365Days;
+      case 'all':
+      default:
+        return new Date(0); // All time
+    }
+  };
+
+  const getFilteredExpenses = () => {
+    if (!allExpenses || allExpenses.length === 0) return [];
+    const cutoffDate = getDateRangeFilter();
+    return allExpenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return expenseDate >= cutoffDate;
+    });
+  };
+
+  const buildFilteredMonthlyData = () => {
+    const filtered = getFilteredExpenses();
+    const monthlyMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[month]) {
+        monthlyMap[month] = 0;
+      }
+      monthlyMap[month] += expense.amount;
+    });
+    
+    return Object.entries(monthlyMap)
+      .map(([month, total]) => ({
+        month,
+        total: parseFloat(total.toFixed(2))
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  };
+
+  const buildFilteredCategoryData = () => {
+    const filtered = getFilteredExpenses();
+    const categoryMap = {};
+    
+    filtered.forEach(expense => {
+      if (!categoryMap[expense.category]) {
+        categoryMap[expense.category] = 0;
+      }
+      categoryMap[expense.category] += expense.amount;
+    });
+    
+    return Object.entries(categoryMap)
+      .map(([name, value]) => ({
+        name,
+        value: parseFloat(value.toFixed(2))
+      }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const filterDataByTimeRange = (data) => {
+    if (!data || data.length === 0) return data;
+    
+    switch(timeRange) {
+      case 'monthly':
+        return data.slice(-1);
+      case 'quarterly':
+        return data.slice(-3);
+      case 'half-year':
+        return data.slice(-6);
+      case 'yearly':
+        return data.slice(-12);
+      case 'all':
+      default:
+        return data;
+    }
+  };
+
+  const getFilteredMonthlyData = () => {
+    return buildFilteredMonthlyData();
+  };
+
+  const getFilteredCategoryData = () => {
+    return buildFilteredCategoryData();
+  };
+
   // ============ CALCULATIONS ============
 
   const getSpendingPatterns = () => {
-    if (!monthlyData || monthlyData.length === 0) return [];
+    const filtered = getFilteredMonthlyData();
+    if (!filtered || filtered.length === 0) return [];
     
-    return monthlyData.map((item, idx) => {
-      const prevMonth = idx > 0 ? monthlyData[idx - 1].total : item.total;
-      const change = ((item.total - prevMonth) / prevMonth * 100).toFixed(1);
+    return filtered.map((item, idx) => {
+      const prevMonth = idx > 0 ? filtered[idx - 1].total : item.total;
+      const change = prevMonth !== 0 ? ((item.total - prevMonth) / prevMonth * 100).toFixed(1) : 0;
       return {
         month: item.month,
         total: item.total,
@@ -77,31 +205,35 @@ function AnalyticsAdvanced() {
   };
 
   const getCategoryTrends = () => {
-    if (!categoryData) return [];
-    
-    return categoryData.map((cat, idx) => ({
+    const cats = getFilteredCategoryData();
+    if (!cats || cats.length === 0) return [];
+
+    const total = cats.reduce((a, b) => a + b.value, 0) || 1;
+    return cats.map((cat, idx) => ({
       name: cat.name,
       value: cat.value,
       index: idx + 1,
-      percentage: ((cat.value / (categoryData.reduce((a, b) => a + b.value, 0))) * 100).toFixed(1)
+      percentage: ((cat.value / total) * 100).toFixed(1)
     }));
   };
 
   const getRadarData = () => {
-    if (!categoryData || categoryData.length === 0) return [];
-    
-    const maxValue = Math.max(...categoryData.map(c => c.value));
-    return categoryData.map(cat => ({
+    const cats = getFilteredCategoryData();
+    if (!cats || cats.length === 0) return [];
+
+    const maxValue = Math.max(...cats.map(c => c.value)) || 1;
+    return cats.map(cat => ({
       name: cat.name,
-      value: (cat.value / maxValue * 100).toFixed(0),
+      value: ((cat.value / maxValue) * 100).toFixed(0),
       fullValue: cat.value
     }));
   };
 
   const getSpendingStats = () => {
-    if (!monthlyData || monthlyData.length === 0) return null;
+    const filtered = getFilteredMonthlyData();
+    if (!filtered || filtered.length === 0) return null;
     
-    const values = monthlyData.map(m => m.total);
+    const values = filtered.map(m => m.total);
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
@@ -120,14 +252,15 @@ function AnalyticsAdvanced() {
   };
 
   const getSpendingDistribution = () => {
-    if (!monthlyData) return { low: 0, medium: 0, high: 0, veryHigh: 0 };
+    const filtered = getFilteredMonthlyData();
+    if (!filtered) return { low: 0, medium: 0, high: 0, veryHigh: 0 };
     
-    const avg = monthlyData.reduce((a, b) => a + b.total, 0) / monthlyData.length;
-    const stdDev = Math.sqrt(monthlyData.reduce((sum, item) => sum + Math.pow(item.total - avg, 2), 0) / monthlyData.length);
+    const avg = filtered.reduce((a, b) => a + b.total, 0) / filtered.length;
+    const stdDev = Math.sqrt(filtered.reduce((sum, item) => sum + Math.pow(item.total - avg, 2), 0) / filtered.length);
     
     const distribution = { low: 0, medium: 0, high: 0, veryHigh: 0 };
     
-    monthlyData.forEach(item => {
+    filtered.forEach(item => {
       if (item.total < avg - stdDev) distribution.low++;
       else if (item.total < avg) distribution.medium++;
       else if (item.total < avg + stdDev) distribution.high++;
@@ -138,10 +271,11 @@ function AnalyticsAdvanced() {
   };
 
   const getCategoryPerformance = () => {
-    if (!categoryData) return [];
-    
-    const total = categoryData.reduce((sum, cat) => sum + cat.value, 0);
-    return categoryData.map((cat, idx) => ({
+    const cats = getFilteredCategoryData();
+    if (!cats || cats.length === 0) return [];
+
+    const total = cats.reduce((sum, cat) => sum + cat.value, 0) || 1;
+    return cats.map((cat, idx) => ({
       name: cat.name,
       value: cat.value,
       percentage: (cat.value / total * 100).toFixed(1),
@@ -150,28 +284,32 @@ function AnalyticsAdvanced() {
   };
 
   const getMonthlyComparison = () => {
-    if (!monthlyData || monthlyData.length < 2) return [];
+    const filtered = getFilteredMonthlyData();
+    if (!filtered || filtered.length < 2) return [];
     
-    return monthlyData.map((item, idx) => ({
+    return filtered.map((item, idx) => ({
       month: item.month,
       current: item.total,
-      average: monthlyData.reduce((a, b) => a + b.total, 0) / monthlyData.length,
-      variance: (item.total - (monthlyData.reduce((a, b) => a + b.total, 0) / monthlyData.length)).toFixed(2)
+      average: filtered.reduce((a, b) => a + b.total, 0) / filtered.length,
+      variance: (item.total - (filtered.reduce((a, b) => a + b.total, 0) / filtered.length)).toFixed(2)
     }));
   };
 
   const getInsights = () => {
     if (!analytics) return {};
-    
-    const topCategory = categoryData.length > 0 ? categoryData[0] : null;
+
+    const cats = getFilteredCategoryData();
+    const filteredMonths = getFilteredMonthlyData();
+    const totalSpendingInRange = filteredMonths && filteredMonths.length ? filteredMonths.reduce((s, m) => s + (m.total || 0), 0) : analytics.totalSpending;
+    const topCategory = cats && cats.length > 0 ? cats[0] : null;
     const trends = getSpendingPatterns();
     const lastTrend = trends.length > 0 ? trends[trends.length - 1] : null;
     
     const observations = [];
     
     if (topCategory) {
-      const percent = (topCategory.value / analytics.totalSpending * 100).toFixed(1);
-      observations.push(`${topCategory.name} dominates spending at ${percent}% of total`);
+      const percent = (topCategory.value / (totalSpendingInRange || 1) * 100).toFixed(1);
+      observations.push(`${topCategory.name} dominates spending at ${percent}% of selected range`);
     }
     
     if (lastTrend && lastTrend.change > 0) {
@@ -187,9 +325,35 @@ function AnalyticsAdvanced() {
     return observations;
   };
 
+  const getFilteredSummaryStats = () => {
+    const filtered = getFilteredMonthlyData();
+    if (!filtered || filtered.length === 0) {
+      return {
+        totalSpending: 0,
+        expenseCount: 0,
+        averageExpense: 0,
+        categoryCount: 0,
+        monthCount: 0
+      };
+    }
+
+    const totalSpending = filtered.reduce((sum, m) => sum + (m.total || 0), 0);
+    const monthCount = filtered.length;
+    const cats = getFilteredCategoryData();
+    
+    return {
+      totalSpending,
+      expenseCount: monthCount, // Number of months in selected range
+      averageExpense: monthCount > 0 ? (totalSpending / monthCount).toFixed(2) : 0,
+      categoryCount: cats ? cats.length : 0,
+      monthCount
+    };
+  };
+
   const getSortedCategoryData = () => {
-    if (!categoryData) return [];
-    const sorted = [...categoryData];
+    const cats = getFilteredCategoryData();
+    if (!cats) return [];
+    const sorted = [...cats];
     if (sortBy === 'value') {
       sorted.sort((a, b) => b.value - a.value);
     } else {
@@ -533,38 +697,45 @@ function AnalyticsAdvanced() {
       {/* Summary Stats */}
       {analytics && (
         <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">💰</div>
-            <div className="stat-content">
-              <div className="stat-label">Total</div>
-              <div className="stat-value">₹{analytics.totalSpending?.toFixed(2)}</div>
-              <div className="stat-subtext">{analytics.expenseCount} items</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <div className="stat-content">
-              <div className="stat-label">Average</div>
-              <div className="stat-value">₹{analytics.averageExpense?.toFixed(2)}</div>
-              <div className="stat-subtext">per item</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">🏷️</div>
-            <div className="stat-content">
-              <div className="stat-label">Categories</div>
-              <div className="stat-value">{Object.keys(analytics.categoryBreakdown || {}).length}</div>
-              <div className="stat-subtext">active</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📈</div>
-            <div className="stat-content">
-              <div className="stat-label">Months</div>
-              <div className="stat-value">{monthlyData?.length || 0}</div>
-              <div className="stat-subtext">tracked</div>
-            </div>
-          </div>
+          {(() => {
+            const filtered = getFilteredSummaryStats();
+            return (
+              <>
+                <div className="stat-card">
+                  <div className="stat-icon">💰</div>
+                  <div className="stat-content">
+                    <div className="stat-label">Total</div>
+                    <div className="stat-value">₹{filtered.totalSpending?.toFixed(2)}</div>
+                    <div className="stat-subtext">{filtered.monthCount} months</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📊</div>
+                  <div className="stat-content">
+                    <div className="stat-label">Average</div>
+                    <div className="stat-value">₹{filtered.averageExpense}</div>
+                    <div className="stat-subtext">per month</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">🏷️</div>
+                  <div className="stat-content">
+                    <div className="stat-label">Categories</div>
+                    <div className="stat-value">{filtered.categoryCount}</div>
+                    <div className="stat-subtext">active</div>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📈</div>
+                  <div className="stat-content">
+                    <div className="stat-label">Months</div>
+                    <div className="stat-value">{filtered.monthCount}</div>
+                    <div className="stat-subtext">in range</div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -600,6 +771,27 @@ function AnalyticsAdvanced() {
               {tab.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Time Range Filter */}
+      <div className="card mt-4">
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary, #333)' }}>
+            ⏱️ Time Range
+          </h4>
+          <div className="button-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {getAvailableTimeRanges().map(range => (
+              <button
+                key={range.value}
+                className={`btn btn-sm ${timeRange === range.value ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setTimeRange(range.value)}
+                style={{ flex: 'none' }}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
