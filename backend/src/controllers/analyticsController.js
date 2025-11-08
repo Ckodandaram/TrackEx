@@ -3,7 +3,8 @@ const Expense = require('../models/Expense');
 // Get analytics summary (GET /api/analytics)
 exports.getAnalytics = async (req, res) => {
   try {
-    const expenses = await Expense.find();
+    const userId = req.userId; // From auth middleware
+    const expenses = await Expense.find({ userId });
 
     if (expenses.length === 0) {
       return res.status(200).json({
@@ -42,7 +43,8 @@ exports.getAnalytics = async (req, res) => {
 // Get category breakdown (GET /api/analytics/category)
 exports.getCategoryBreakdown = async (req, res) => {
   try {
-    const expenses = await Expense.find();
+    const userId = req.userId; // From auth middleware
+    const expenses = await Expense.find({ userId });
 
     const breakdown = {};
     expenses.forEach((expense) => {
@@ -67,7 +69,8 @@ exports.getCategoryBreakdown = async (req, res) => {
 // Get monthly trends (GET /api/analytics/monthly)
 exports.getMonthlyTrends = async (req, res) => {
   try {
-    const expenses = await Expense.find();
+    const userId = req.userId; // From auth middleware
+    const expenses = await Expense.find({ userId });
 
     const monthly = {};
     expenses.forEach((expense) => {

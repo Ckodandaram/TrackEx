@@ -1,0 +1,362 @@
+/* Profile Page Styles */
+
+.profile {
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Profile Header */
+.profile-header {
+  background: linear-gradient(135deg, var(--primary-blue), #0052cc);
+  border-radius: 12px;
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  color: white;
+  box-shadow: var(--shadow-lg);
+  animation: slideInDown 0.3s ease-out;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-info h1 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.profile-info p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Profile Details */
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  font-size: 14px;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.success {
+  background: rgba(34, 139, 34, 0.1);
+  color: var(--success-green, #228B22);
+}
+
+.status-badge.warning {
+  background: rgba(255, 165, 0, 0.1);
+  color: #FFA500;
+}
+
+.status-badge.error {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--alert-red, #dc3545);
+}
+
+/* Settings Section */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  transition: background-color 0.2s ease;
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+}
+
+.setting-row:hover {
+  background-color: var(--bg-hover, #f5f5f5);
+}
+
+.setting-label {
+  flex: 1;
+}
+
+.setting-label span {
+  display: block;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+  margin-bottom: 4px;
+}
+
+.setting-description {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+  margin: 0;
+}
+
+.setting-value {
+  font-weight: 600;
+  color: var(--primary-blue, #0066FF);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background: var(--border-color, #ccc);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  padding: 0;
+}
+
+.toggle-switch.active {
+  background: var(--success-green, #228B22);
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: left 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch.active .toggle-slider {
+  left: 26px;
+}
+
+/* Danger Zone */
+.danger-zone {
+  border-left: 4px solid var(--alert-red, #dc3545);
+  background: rgba(220, 53, 69, 0.02);
+}
+
+.danger-zone .card-title {
+  color: var(--alert-red, #dc3545);
+}
+
+/* Profile Footer */
+.profile-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  text-align: center;
+}
+
+.profile-footer p {
+  margin: 0;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  background: var(--bg-secondary, #f9f9f9);
+  border-radius: 12px;
+  border: 2px dashed var(--border-color, #e0e0e0);
+}
+
+.empty-state-icon {
+  font-size: 60px;
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  color: var(--text-secondary, #666);
+  margin-bottom: 24px;
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary, #f0f0f0) 25%,
+    var(--bg-tertiary, #e0e0e0) 50%,
+    var(--bg-secondary, #f0f0f0) 75%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button Styles for Profile */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary, #f0f0f0);
+  color: var(--text-primary, #333);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-tertiary, #e0e0e0);
+}
+
+.btn-danger {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--alert-red, #dc3545);
+  border: 1px solid var(--alert-red, #dc3545);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--alert-red, #dc3545);
+  color: white;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .profile {
+    padding: 16px;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+  }
+
+  .detail-row,
+  .setting-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .setting-row {
+    justify-content: space-between;
+    flex-direction: row;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .profile-header {
+    background: linear-gradient(135deg, #0052cc, #003d99);
+  }
+
+  .detail-row,
+  .setting-row {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .setting-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .status-badge.success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+  }
+
+  .empty-state {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Accessibility */
+.toggle-switch:focus-visible {
+  outline: 2px solid var(--primary-blue, #0066FF);
+  outline-offset: 2px;
+}
+
+.btn-sm:focus-visible {
+  outline: 2px solid var(--primary-blue, #0066FF);
+  outline-offset: 2px;
+}
