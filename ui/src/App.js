@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Pages
 import Dashboard from './pages/Dashboard';
 import AddExpense from './pages/AddExpense';
-import Analytics from './pages/Analytics';
+import AnalyticsAdvanced from './pages/Analytics_Ultra';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -90,7 +90,7 @@ function AppContent() {
           path="/analytics" 
           element={
             <ProtectedRoute>
-              <Analytics />
+              <AnalyticsAdvanced />
             </ProtectedRoute>
           } 
         />
