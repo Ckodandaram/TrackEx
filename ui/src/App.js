@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './styles/design-system.css';
 import './styles/App.css';
 
 // Pages
@@ -12,8 +13,10 @@ function App() {
     <Router>
       <div className="App">
         <nav className="navbar">
-          <h1>TrackEx</h1>
-          <ul>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+            <a href="/" className="navbar-logo">SpendWise</a>
+          </div>
+          <ul className="navbar-menu">
             <li><a href="/">Dashboard</a></li>
             <li><a href="/add-expense">Add Expense</a></li>
             <li><a href="/analytics">Analytics</a></li>
@@ -25,6 +28,20 @@ function App() {
           <Route path="/add-expense" element={<AddExpense />} />
           <Route path="/analytics" element={<Analytics />} />
         </Routes>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="bottom-nav" style={{ display: 'none' }}>
+          <a href="/">📊 Dashboard</a>
+          <a href="/add-expense">➕ Add</a>
+          <a href="/analytics">📈 Analytics</a>
+        </nav>
+
+        <style>{`
+          @media (max-width: 768px) {
+            .navbar-menu { display: none; }
+            .bottom-nav { display: flex; }
+          }
+        `}</style>
       </div>
     </Router>
   );
