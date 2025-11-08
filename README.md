@@ -224,7 +224,15 @@ npm start
 - Password encryption using bcrypt
 - JWT token-based authentication
 - Protected API routes with middleware
-- Secure password reset (optional feature)
+- Input validation with Mongoose schemas
+- Simple email validation to prevent ReDoS attacks
+
+**Production Recommendations:**
+- Implement rate limiting (see SECURITY.md)
+- Use HTTPS/SSL certificates
+- Configure CORS for specific domains
+- Add helmet.js for security headers
+- See SECURITY.md for comprehensive security checklist
 
 ## 🚧 Future Enhancements
 
