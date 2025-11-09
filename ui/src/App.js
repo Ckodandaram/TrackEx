@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 // Pages
 import Dashboard from './pages/Dashboard';
 import AddExpense from './pages/AddExpense';
+import EditExpense from './pages/EditExpense';
 import AnalyticsAdvanced from './pages/Analytics_Ultra';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
@@ -83,6 +84,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AddExpense />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/edit-expense/:id" 
+          element={
+            <ProtectedRoute>
+              <EditExpense />
             </ProtectedRoute>
           } 
         />

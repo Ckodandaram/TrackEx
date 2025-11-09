@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { expenseService } from '../services/api';
 import '../styles/AddExpense.css';
 
-function AddExpense() {
+function EditExpense() {
+  const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    category: 'Food',
+    category: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
 
   const categories = ['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Health', 'Other'];
+
+  const fetchExpense = async () => {
+    try {
+      const response = await expenseService.getById(id);
+      const expense = response.data;
+      setFormData({
+        category: expense.category,
+        amount: expense.amount,
+        description: expense.description || '',
+        date: new Date(expense.date).toISOString().split('T')[0],
+      });
+      setLoading(false);
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to load expense';
+      setError(`❌ ${errorMsg}`);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpense();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -53,7 +78,6 @@ function AddExpense() {
       ...prev,
       [name]: value,
     }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -70,33 +94,33 @@ function AddExpense() {
       return;
     }
 
-    setLoading(true);
+    setUpdating(true);
     setError('');
     setMessage('');
 
     try {
-      await expenseService.create(formData);
-      setMessage('✅ Expense added successfully!');
-      setFormData({
-        category: 'Food',
-        amount: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-      });
-      setErrors({});
-      
+      await expenseService.update(id, formData);
+      setMessage('✅ Expense updated successfully!');
       setTimeout(() => navigate('/dashboard'), 1000);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.message || 'Failed to add expense';
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to update expense';
       setError(`❌ ${errorMsg}`);
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="skeleton" style={{ height: '100px' }}></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
-      <h2>Add New Expense</h2>
+      <h2>Edit Expense</h2>
       
       {error && <div className="message error">{error}</div>}
       {message && <div className="message success">{message}</div>}
@@ -109,7 +133,7 @@ function AddExpense() {
             value={formData.category}
             onChange={handleChange}
             className={errors.category ? 'input-error' : ''}
-            disabled={loading}
+            disabled={updating}
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -128,7 +152,7 @@ function AddExpense() {
             placeholder="0.00"
             step="0.01"
             className={errors.amount ? 'input-error' : ''}
-            disabled={loading}
+            disabled={updating}
           />
           {errors.amount && <span className="error-text">{errors.amount}</span>}
         </div>
@@ -143,7 +167,7 @@ function AddExpense() {
             placeholder="Optional description"
             maxLength="200"
             className={errors.description ? 'input-error' : ''}
-            disabled={loading}
+            disabled={updating}
           />
           <span className="char-count">{formData.description.length}/200</span>
           {errors.description && <span className="error-text">{errors.description}</span>}
@@ -157,18 +181,23 @@ function AddExpense() {
             value={formData.date}
             onChange={handleChange}
             className={errors.date ? 'input-error' : ''}
-            disabled={loading}
+            disabled={updating}
             max={new Date().toISOString().split('T')[0]}
           />
           {errors.date && <span className="error-text">{errors.date}</span>}
         </div>
 
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? 'Adding...' : 'Add Expense'}
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button type="submit" disabled={updating} className="btn btn-primary">
+            {updating ? 'Updating...' : 'Update Expense'}
+          </button>
+          <button type="button" onClick={() => navigate('/dashboard')} className="btn" disabled={updating}>
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );
 }
 
-export default AddExpense;
+export default EditExpense;
