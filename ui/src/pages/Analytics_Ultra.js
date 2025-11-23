@@ -23,6 +23,8 @@ function AnalyticsAdvanced() {
   const [sortBy, setSortBy] = useState('value');
   const [timeRange, setTimeRange] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   useEffect(() => {
     fetchAllAnalytics();
@@ -150,6 +152,84 @@ function AnalyticsAdvanced() {
       .sort((a, b) => b.value - a.value);
   };
 
+  // Get available categories from filtered expenses
+  const getAvailableCategories = () => {
+    const filtered = getFilteredExpenses();
+    const categories = new Set(filtered.map(e => e.category));
+    return Array.from(categories).sort();
+  };
+
+  // Get available months from filtered expenses
+  const getAvailableMonths = () => {
+    const filtered = getFilteredExpenses();
+    const months = new Set(
+      filtered.map(e => {
+        const date = new Date(e.date);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      })
+    );
+    return Array.from(months).sort().reverse(); // Most recent first
+  };
+
+  // Filter expenses by selected category and month
+  const getFilteredByCategory = () => {
+    let filtered = getFilteredExpenses();
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(e => e.category === selectedCategory);
+    }
+    return filtered;
+  };
+
+  const getFilteredByMonth = () => {
+    let filtered = getFilteredByCategory();
+    if (selectedMonth !== 'all') {
+      filtered = filtered.filter(e => {
+        const date = new Date(e.date);
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        return month === selectedMonth;
+      });
+    }
+    return filtered;
+  };
+
+  // Build category data from double-filtered expenses
+  const buildCategoryDataWithFilters = () => {
+    const filtered = getFilteredByMonth();
+    const categoryMap = {};
+    filtered.forEach(expense => {
+      if (!categoryMap[expense.category]) {
+        categoryMap[expense.category] = 0;
+      }
+      categoryMap[expense.category] += expense.amount;
+    });
+    return Object.entries(categoryMap)
+      .map(([name, value]) => ({
+        name,
+        value: parseFloat(value.toFixed(2))
+      }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  // Build monthly data from double-filtered expenses
+  const buildMonthlyDataWithFilters = () => {
+    const filtered = getFilteredByMonth();
+    const monthlyMap = {};
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[month]) {
+        monthlyMap[month] = 0;
+      }
+      monthlyMap[month] += expense.amount;
+    });
+    return Object.entries(monthlyMap)
+      .map(([month, total]) => ({
+        month,
+        total: parseFloat(total.toFixed(2))
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  };
+
   const filterDataByTimeRange = (data) => {
     if (!data || data.length === 0) return data;
     
@@ -169,11 +249,11 @@ function AnalyticsAdvanced() {
   };
 
   const getFilteredMonthlyData = () => {
-    return buildFilteredMonthlyData();
+    return buildMonthlyDataWithFilters();
   };
 
   const getFilteredCategoryData = () => {
-    return buildFilteredCategoryData();
+    return buildCategoryDataWithFilters();
   };
 
   // ============ CALCULATIONS ============
@@ -789,6 +869,62 @@ function AnalyticsAdvanced() {
                 style={{ flex: 'none' }}
               >
                 {range.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Category Filter */}
+      <div className="card mt-4">
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary, #333)' }}>
+            🏷️ Category Filter
+          </h4>
+          <div className="button-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setSelectedCategory('all')}
+              style={{ flex: 'none' }}
+            >
+              All Categories
+            </button>
+            {getAvailableCategories().map(category => (
+              <button
+                key={category}
+                className={`btn btn-sm ${selectedCategory === category ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSelectedCategory(category)}
+                style={{ flex: 'none' }}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Month Filter */}
+      <div className="card mt-4">
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: 'var(--text-primary, #333)' }}>
+            📅 Month Filter
+          </h4>
+          <div className="button-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxWidth: '100%', overflowX: 'auto' }}>
+            <button
+              className={`btn btn-sm ${selectedMonth === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setSelectedMonth('all')}
+              style={{ flex: 'none' }}
+            >
+              All Months
+            </button>
+            {getAvailableMonths().map(month => (
+              <button
+                key={month}
+                className={`btn btn-sm ${selectedMonth === month ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSelectedMonth(month)}
+                style={{ flex: 'none' }}
+              >
+                {new Date(`${month}-01`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </button>
             ))}
           </div>
