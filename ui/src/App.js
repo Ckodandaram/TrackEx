@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import AddExpense from './pages/AddExpense';
 import EditExpense from './pages/EditExpense';
 import AnalyticsAdvanced from './pages/Analytics_Ultra';
+import Stories from './pages/Stories';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -45,6 +46,7 @@ function AppContent() {
             <li><a href="/">Dashboard</a></li>
             <li><a href="/add-expense">Add Expense</a></li>
             <li><a href="/analytics">Analytics</a></li>
+            <li><a href="/insights">💡 Insights</a></li>
             <li><a href="/profile">👤 {user?.name || 'Profile'}</a></li>
             <li>
               <button 
@@ -100,6 +102,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AnalyticsAdvanced />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/insights" 
+          element={
+            <ProtectedRoute>
+              <Stories />
             </ProtectedRoute>
           } 
         />

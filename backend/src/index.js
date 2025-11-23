@@ -49,6 +49,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/insights', require('./routes/insights'));
 
 // Error handling
 app.use((err, req, res, next) => {

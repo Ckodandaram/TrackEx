@@ -60,4 +60,13 @@ export const userService = {
   getCurrentUser: () => apiClient.get('/users/me'),
 };
 
+// Insight preferences endpoints
+export const insightService = {
+  getPreferences: () => apiClient.get('/insights'),
+  saveInsight: (insightId) => apiClient.post('/insights/save', { insightId }),
+  unsaveInsight: (insightId) => apiClient.delete('/insights/save', { data: { insightId } }),
+  dismissInsight: (insightId) => apiClient.post('/insights/dismiss', { insightId }),
+  restoreAll: () => apiClient.post('/insights/restore'),
+};
+
 export default apiClient;
