@@ -230,6 +230,188 @@ function AnalyticsAdvanced() {
       .sort((a, b) => a.month.localeCompare(b.month));
   };
 
+  // Build multidimensional Month × Category data for heatmap
+  const buildMonthCategoryHeatmapData = () => {
+    const filtered = getFilteredByCategory(); // Only filter by category and time range, not by month
+    const heatmapMatrix = {};
+    const categories = new Set();
+    const months = new Set();
+
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const category = expense.category;
+      
+      const key = `${month}|${category}`;
+      heatmapMatrix[key] = (heatmapMatrix[key] || 0) + expense.amount;
+      
+      categories.add(category);
+      months.add(month);
+    });
+
+    // Convert to array format for Treemap visualization
+    const sortedMonths = Array.from(months).sort().reverse(); // Recent first
+    const sortedCategories = Array.from(categories).sort();
+
+    const data = [];
+    sortedMonths.forEach(month => {
+      sortedCategories.forEach(category => {
+        const key = `${month}|${category}`;
+        const value = heatmapMatrix[key] || 0;
+        if (value > 0) {
+          data.push({
+            name: `${category} (${new Date(`${month}-01`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})`,
+            value: parseFloat(value.toFixed(2)),
+            month,
+            category,
+            fill: getHeatmapColor(value)
+          });
+        }
+      });
+    });
+
+    return data.sort((a, b) => b.value - a.value);
+  };
+
+  // Get color for heatmap based on value
+  const getHeatmapColor = (value) => {
+    const maxValue = Math.max(...getFilteredByCategory().map(e => e.amount), 1);
+    const ratio = value / maxValue;
+    
+    if (ratio > 0.8) return '#EF4444'; // Dark red - highest
+    if (ratio > 0.6) return '#F97316'; // Orange
+    if (ratio > 0.4) return '#FBBF24'; // Yellow
+    if (ratio > 0.2) return '#86EFAC'; // Light green
+    return '#DBEAFE'; // Light blue - lowest
+  };
+
+  // ============ 5 MULTIDIMENSIONAL CHART DATA BUILDERS ============
+
+  // 1. Stacked Bar Chart - Each month with breakdown by category
+  const buildStackedBarData = () => {
+    const filtered = getFilteredByMonth();
+    const monthMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthMap[month]) {
+        monthMap[month] = { month };
+      }
+      const category = expense.category;
+      monthMap[month][category] = (monthMap[month][category] || 0) + expense.amount;
+    });
+
+    return Object.values(monthMap)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .map(item => {
+        const total = Object.values(item).reduce((sum, val) => 
+          typeof val === 'number' ? sum + val : sum, 0
+        );
+        return { ...item, total };
+      });
+  };
+
+  // 2. Grouped Bar Chart - Each category with breakdown by month
+  const buildGroupedBarData = () => {
+    const filtered = getFilteredByMonth();
+    const categoryMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const category = expense.category;
+      
+      if (!categoryMap[category]) {
+        categoryMap[category] = { category };
+      }
+      categoryMap[category][month] = (categoryMap[category][month] || 0) + expense.amount;
+    });
+
+    return Object.values(categoryMap).map(item => {
+      const total = Object.values(item).reduce((sum, val) => 
+        typeof val === 'number' ? sum + val : sum, 0
+      );
+      return { ...item, total };
+    }).sort((a, b) => b.total - a.total);
+  };
+
+  // 3. Multi-Line Trend Chart - Each category as a line over months
+  const buildMultiLineTrendData = () => {
+    const filtered = getFilteredByMonth();
+    const monthMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthMap[month]) {
+        monthMap[month] = { month };
+      }
+      const category = expense.category;
+      monthMap[month][category] = (monthMap[month][category] || 0) + expense.amount;
+    });
+
+    return Object.values(monthMap)
+      .sort((a, b) => a.month.localeCompare(b.month));
+  };
+
+  // 4. Bubble Chart - Month × Category × Amount relationship
+  const buildBubbleChartData = () => {
+    const filtered = getFilteredByMonth();
+    const bubbleMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${month}-${expense.category}`;
+      bubbleMap[key] = (bubbleMap[key] || 0) + expense.amount;
+    });
+
+    // Get all unique months and categories for positioning
+    const months = [...new Set(Object.keys(bubbleMap).map(k => k.split('-')[0]))].sort();
+    const categories = [...new Set(Object.keys(bubbleMap).map(k => k.split('-')[1]))].sort();
+    
+    const monthIndex = {};
+    const categoryIndex = {};
+    months.forEach((m, i) => monthIndex[m] = i);
+    categories.forEach((c, i) => categoryIndex[c] = i);
+
+    return Object.entries(bubbleMap).map(([key, value]) => {
+      const [month, category] = key.split('-');
+      return {
+        x: monthIndex[month],
+        y: categoryIndex[category],
+        z: parseFloat(value.toFixed(2)),
+        month,
+        category,
+        value: parseFloat(value.toFixed(2)),
+        name: `${category} - ${month}`
+      };
+    });
+  };
+
+  // 5. Advanced Heatmap Data - Numerical matrix for better visualization
+  const buildAdvancedHeatmapData = () => {
+    const filtered = getFilteredByMonth();
+    const heatmapMap = {};
+    
+    filtered.forEach(expense => {
+      const date = new Date(expense.date);
+      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${month}-${expense.category}`;
+      heatmapMap[key] = (heatmapMap[key] || 0) + expense.amount;
+    });
+
+    return Object.entries(heatmapMap).map(([key, value]) => {
+      const [month, category] = key.split('-');
+      return {
+        month,
+        category,
+        value: parseFloat(value.toFixed(2))
+      };
+    });
+  };
+
   const filterDataByTimeRange = (data) => {
     if (!data || data.length === 0) return data;
     
@@ -692,6 +874,229 @@ function AnalyticsAdvanced() {
             </ResponsiveContainer>
           </div>
         );
+      case 'matrix':
+        const heatmapData = buildMonthCategoryHeatmapData();
+        if (!heatmapData || heatmapData.length === 0) {
+          return <div className="analysis-view"><p>No data available for Month × Category visualization</p></div>;
+        }
+        return (
+          <div className="analysis-view">
+            <h3>📊 Month × Category Spending Matrix</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              Heatmap showing spending distribution across months and categories. Darker red = higher spending.
+            </p>
+            <ResponsiveContainer width="100%" height={400}>
+              <Treemap 
+                data={heatmapData}
+                dataKey="value"
+                stroke="#fff"
+                fill="#8884d8"
+              >
+                <Tooltip 
+                  formatter={(value) => `₹${typeof value === 'number' ? value.toFixed(2) : value}`}
+                  contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.96)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px' }}
+                />
+              </Treemap>
+            </ResponsiveContainer>
+            <div style={{ marginTop: '20px', padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
+              <h4 style={{ margin: '0 0 12px 0' }}>Color Legend</h4>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#EF4444', borderRadius: '4px' }}></div>
+                  <span>80%+ of max</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#F97316', borderRadius: '4px' }}></div>
+                  <span>60-80%</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#FBBF24', borderRadius: '4px' }}></div>
+                  <span>40-60%</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#86EFAC', borderRadius: '4px' }}></div>
+                  <span>20-40%</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '20px', height: '20px', backgroundColor: '#DBEAFE', borderRadius: '4px' }}></div>
+                  <span>0-20%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'stacked-bar':
+        const stackedData = buildStackedBarData();
+        const stackedCategories = [...new Set(stackedData.flatMap(item => Object.keys(item).filter(k => k !== 'month' && k !== 'total')))];
+        if (!stackedData || stackedData.length === 0) {
+          return <div className="analysis-view"><p>No data available</p></div>;
+        }
+        return (
+          <div className="analysis-view">
+            <h3>📊 Stacked Bar Chart - Monthly Breakdown by Category</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              See how each category contributes to monthly spending.
+            </p>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={stackedData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => `₹${parseFloat(value).toFixed(2)}`} />
+                <Legend />
+                {stackedCategories.map((cat, idx) => (
+                  <Bar key={cat} dataKey={cat} stackId="a" fill={COLORS[idx % COLORS.length]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case 'grouped-bar':
+        const groupedData = buildGroupedBarData();
+        const groupedMonths = [...new Set(groupedData.flatMap(item => Object.keys(item).filter(k => k !== 'category' && k !== 'total')))].sort();
+        if (!groupedData || groupedData.length === 0) {
+          return <div className="analysis-view"><p>No data available</p></div>;
+        }
+        return (
+          <div className="analysis-view">
+            <h3>📊 Grouped Bar Chart - Category Breakdown by Month</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              Compare spending across categories for each month side by side.
+            </p>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={groupedData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="category" width={100} />
+                <Tooltip formatter={(value) => `₹${parseFloat(value).toFixed(2)}`} />
+                <Legend />
+                {groupedMonths.map((month, idx) => (
+                  <Bar key={month} dataKey={month} fill={COLORS[idx % COLORS.length]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case 'multi-line':
+        const multiLineData = buildMultiLineTrendData();
+        const trendCategories = [...new Set(multiLineData.flatMap(item => Object.keys(item).filter(k => k !== 'month')))];
+        if (!multiLineData || multiLineData.length === 0) {
+          return <div className="analysis-view"><p>No data available</p></div>;
+        }
+        return (
+          <div className="analysis-view">
+            <h3>📈 Multi-Line Trend Chart - Category Trends Over Time</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              Track spending trends for each category over months.
+            </p>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={multiLineData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => `₹${parseFloat(value).toFixed(2)}`} />
+                <Legend />
+                {trendCategories.map((cat, idx) => (
+                  <Line key={cat} type="monotone" dataKey={cat} stroke={COLORS[idx % COLORS.length]} strokeWidth={2} dot={{ r: 4 }} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+      case 'bubble':
+        const bubbleData = buildBubbleChartData();
+        const allMonths = [...new Set(bubbleData.map(d => d.month))].sort();
+        const allCats = [...new Set(bubbleData.map(d => d.category))].sort();
+        if (!bubbleData || bubbleData.length === 0) {
+          return <div className="analysis-view"><p>No data available</p></div>;
+        }
+        return (
+          <div className="analysis-view">
+            <h3>🫧 Bubble Chart - Month × Category × Amount</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              Bubble size represents spending amount. X-axis: Months, Y-axis: Categories.
+            </p>
+            <ResponsiveContainer width="100%" height={400}>
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 100 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis type="number" dataKey="x" name="Month" domain={[0, Math.max(...bubbleData.map(d => d.x), 1)]} />
+                <YAxis type="number" dataKey="y" name="Category" domain={[0, Math.max(...bubbleData.map(d => d.y), 1)]} />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value) => typeof value === 'number' ? `₹${value.toFixed(2)}` : value} />
+                <Scatter name="Spending" data={bubbleData} fill="#2563eb">
+                  {bubbleData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+            <div style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
+              <p><strong>Months:</strong> {allMonths.join(', ')}</p>
+              <p><strong>Categories:</strong> {allCats.join(', ')}</p>
+            </div>
+          </div>
+        );
+
+      case 'heatmap-grid':
+        const heatmapGridData = buildAdvancedHeatmapData();
+        const heatMonths = [...new Set(heatmapGridData.map(d => d.month))].sort();
+        const heatCats = [...new Set(heatmapGridData.map(d => d.category))].sort();
+        if (!heatmapGridData || heatmapGridData.length === 0) {
+          return <div className="analysis-view"><p>No data available</p></div>;
+        }
+        // Create a grid layout
+        const maxValue = Math.max(...heatmapGridData.map(d => d.value), 1);
+        return (
+          <div className="analysis-view">
+            <h3>🔥 Heatmap Grid - Month × Category Intensity</h3>
+            <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+              Darker colors indicate higher spending. Each cell shows spending for a month-category combination.
+            </p>
+            <div style={{ overflowX: 'auto', padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', borderBottom: '2px solid #ddd', minWidth: '80px' }}>Month/Cat</th>
+                    {heatMonths.map(month => (
+                      <th key={month} style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', borderBottom: '2px solid #ddd', minWidth: '100px', fontSize: '12px' }}>
+                        {new Date(`${month}-01`).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {heatCats.map(cat => (
+                    <tr key={cat}>
+                      <td style={{ padding: '12px', fontWeight: 'bold', borderRight: '2px solid #ddd', fontSize: '12px', textAlign: 'center' }}>{cat}</td>
+                      {heatMonths.map(month => {
+                        const item = heatmapGridData.find(d => d.month === month && d.category === cat);
+                        const value = item ? item.value : 0;
+                        const intensity = value / maxValue;
+                        const bgColor = intensity === 0 ? '#ffffff' : `rgba(239, 68, 68, ${0.2 + intensity * 0.8})`;
+                        return (
+                          <td key={`${month}-${cat}`} style={{
+                            padding: '12px',
+                            textAlign: 'center',
+                            backgroundColor: bgColor,
+                            border: '1px solid #ddd',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }} title={`${cat} - ${month}: ₹${value.toFixed(2)}`}>
+                            {value > 0 ? `₹${value.toFixed(0)}` : '-'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
 
       default: // overview
         return (
@@ -840,8 +1245,14 @@ function AnalyticsAdvanced() {
           {[
             { id: 'overview', label: '📊 Overview', icon: 'overview' },
             { id: 'patterns', label: '📈 Patterns', icon: 'trends' },
-            { id: 'heatmap', label: '🔥 Statistics', icon: 'stats' },
-            { id: 'comparison', label: '⚖️ Comparison', icon: 'compare' }
+            { id: 'matrix', label: '🔥 Month×Category', icon: 'matrix' },
+            { id: 'heatmap', label: '� Statistics', icon: 'stats' },
+            { id: 'comparison', label: '⚖️ Comparison', icon: 'compare' },
+            { id: 'stacked-bar', label: '📊 Stacked Bar', icon: 'stacked' },
+            { id: 'grouped-bar', label: '📊 Grouped Bar', icon: 'grouped' },
+            { id: 'multi-line', label: '📈 Multi-Line', icon: 'multiline' },
+            { id: 'bubble', label: '🫧 Bubble', icon: 'bubble' },
+            { id: 'heatmap-grid', label: '🔥 Grid', icon: 'heatgrid' }
           ].map(tab => (
             <button
               key={tab.id}
